@@ -1,8 +1,12 @@
 NUM_WORKERS = 8
 
-DATA_PATH = "../input/"
-LOG_PATH = "../logs/"
-OUT_PATH = "../output/"
+# DATA_PATH = "../input/"
+# LOG_PATH = "../logs/"
+# OUT_PATH = "../output/"
+
+DATA_PATH = '/drive/MyDrive/2024/Learning ML (AIO)/rsna_2024/rsna_2023/input'
+LOG_PATH = '/drive/MyDrive/2024/Learning ML (AIO)/rsna_2024/rsna_2023/logs'
+OUT_PATH = '/drive/MyDrive/2024/Learning ML (AIO)/rsna_2024/rsna_2023/output' 
 
 DEVICE = "cuda"
 
