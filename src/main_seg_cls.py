@@ -167,6 +167,7 @@ if __name__ == "__main__":
         print("Using GPU ", device)
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device)
         assert torch.cuda.device_count() == 1
+        distributed = False 
 
     log_folder = args.log_folder
     if not log_folder:
@@ -231,7 +232,7 @@ if __name__ == "__main__":
             log_folder,
             use_fp16=config.use_fp16,
             save=True,
-            distributed=True,
+            distributed=distributed,
             config=config,
         )
 
