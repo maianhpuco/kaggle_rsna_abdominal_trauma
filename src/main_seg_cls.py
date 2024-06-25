@@ -212,7 +212,7 @@ if __name__ == "__main__":
             f"- Learning rate {config.optimizer_config['lr']:.1e}   (n_gpus={config.world_size})"
         )
         print("\n -> Training\n")
-
+        print("\n Print config: ", config.__dict__)
     df = prepare_seg_data(data_path=DATA_PATH)
 #     df = df.sample(100000).reset_index(drop=True)
 
@@ -225,7 +225,6 @@ if __name__ == "__main__":
         from inference.extract_features import kfold_inference
 
         df_patient, df_img = prepare_data(DATA_PATH)
-        print("config of training:",  config.dict)
         kfold_inference(
             df_patient,
             df_img,
