@@ -66,7 +66,7 @@ def parse_args():
         help="Weight decay",
     )
     parser.add_argument(
-        "--pretrained_weights"
+        "--pretrained_weights", 
         type=str, 
         default="", 
         help="path to the pretrained model"
