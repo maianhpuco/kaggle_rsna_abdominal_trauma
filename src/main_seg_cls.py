@@ -205,7 +205,8 @@ if __name__ == "__main__":
         
     if args.pretrained_weights:
         config.pretrained_weights = args.pretrained_weights 
-        
+    
+    
     if config.local_rank == 0:
         if args.fold > -1:
             config.selected_folds = [args.fold]
