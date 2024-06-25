@@ -225,7 +225,7 @@ if __name__ == "__main__":
         from inference.extract_features import kfold_inference
 
         df_patient, df_img = prepare_data(DATA_PATH)
-
+        print("config of training:",  config.dict)
         kfold_inference(
             df_patient,
             df_img,
