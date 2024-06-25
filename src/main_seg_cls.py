@@ -65,7 +65,14 @@ def parse_args():
         default=0.0,
         help="Weight decay",
     )
+    parser.add_argument(
+        "--pretrained_weights"
+        type=str, 
+        default="", 
+        help="path to the pretrained model"
+    )
     return parser.parse_args()
+    
 
 
 class Config:
@@ -195,7 +202,10 @@ if __name__ == "__main__":
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size
         config.data_config["val_bs"] = args.batch_size
-
+        
+    if args.pretrained_weights:
+        config.pretrained_weights = args.pretrained_weights 
+        
     if config.local_rank == 0:
         if args.fold > -1:
             config.selected_folds = [args.fold]

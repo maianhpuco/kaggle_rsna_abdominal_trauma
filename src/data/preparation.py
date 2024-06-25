@@ -81,6 +81,7 @@ def prepare_data(data_path=DATA_PATH, with_seg=True):
 
     return df_patient, df_img
 
+
 def prepare_seg_data(data_path=DATA_PATH, use_3d=False):
     """
     Prepare data for segmentation.
