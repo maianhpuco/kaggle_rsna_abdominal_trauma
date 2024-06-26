@@ -57,7 +57,7 @@ def predict_distributed(
     model,
     dataset,
     loss_config,
-    batch_size=32,
+    batch_size=64,
     use_fp16=False,
     num_workers=8,
     distributed=True,
@@ -291,7 +291,7 @@ def kfold_inference(
             distributed=True,
             world_size=config.world_size,
             local_rank=config.local_rank,
-            save_every=30,  # Adjust as needed
+            save_every=10,  # Adjust as needed
             exp_folder=exp_folder,
             fold_name=fold_name,
         )
