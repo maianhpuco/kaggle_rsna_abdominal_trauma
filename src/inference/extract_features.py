@@ -91,8 +91,10 @@ def predict_distributed(
     model.eval()
     #preds_accumulator, fts_accumulator = [], []
     # Initial empty numpy arrays
-    preds_accumulator = np.empty((0, model.num_classes))  # Assuming model.num_classes is the number of output classes
-    fts_accumulator = np.empty((0, model.feature_dim))  # Assuming model.feature_dim is the dimension of the features 
+    preds_accumulator = [] 
+    fts_accumulator = [] 
+    # preds_accumulator = np.empty((0, model.num_classes))  # Assuming model.num_classes is the number of output classes
+    # fts_accumulator = np.empty((0, model.feature_dim))  # Assuming model.feature_dim is the dimension of the features 
     
     loader = define_loaders(
         dataset,
@@ -129,11 +131,11 @@ def predict_distributed(
                 y_pred[:, 5:8] = y_pred[:, 5:8].softmax(-1)
                 y_pred[:, 8:] = y_pred[:, 8:].softmax(-1)
                 
-            preds_accumulator = np.vstack([preds_accumulator, y_pred.detach().cpu().numpy()])
-            fts_accumulator = np.vstack([fts_accumulator, ft.detach().cpu().numpy()]) 
+            # preds_accumulator = np.vstack([preds_accumulator, y_pred.detach().cpu().numpy()])
+            # fts_accumulator = np.vstack([fts_accumulator, ft.detach().cpu().numpy()]) 
             
-            #preds_accumulator.append(y_pred.detach().cpu().numpy())
-            #fts_accumulator.append(ft.detach().cpu().numpy())
+            preds_accumulator.append(y_pred.detach().cpu().numpy())
+            fts_accumulator.append(ft.detach().cpu().numpy())
             save_counter += 1
             
             # Remove tensors from memory explicitly
