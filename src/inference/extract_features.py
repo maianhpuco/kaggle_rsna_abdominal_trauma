@@ -63,7 +63,7 @@ def predict_distributed(
     distributed=True,
     world_size=0,
     local_rank=0,
-    save_every=20,
+    save_every=10,
     exp_folder=None,
     fold_name=None  # New argument to specify fold name for saving
 ):
@@ -88,8 +88,11 @@ def predict_distributed(
         None
     """
     model.eval()
-    preds_accumulator, fts_accumulator = [], []
-
+    #preds_accumulator, fts_accumulator = [], []
+    # Initial empty numpy arrays
+    preds_accumulator = np.empty((0, model.num_classes))  # Assuming model.num_classes is the number of output classes
+    fts_accumulator = np.empty((0, model.feature_dim))  # Assuming model.feature_dim is the dimension of the features 
+    
     loader = define_loaders(
         dataset,
         dataset,
@@ -124,9 +127,12 @@ def predict_distributed(
                 y_pred[:, 2:5] = y_pred[:, 2:5].softmax(-1)
                 y_pred[:, 5:8] = y_pred[:, 5:8].softmax(-1)
                 y_pred[:, 8:] = y_pred[:, 8:].softmax(-1)
-
-            preds_accumulator.append(y_pred.detach().cpu().numpy())
-            fts_accumulator.append(ft.detach().cpu().numpy())
+                
+            preds_accumulator = np.vstack([preds_accumulator, y_pred.detach().cpu().numpy()])
+            fts_accumulator = np.vstack([fts_accumulator, ft.detach().cpu().numpy()]) 
+            
+            #preds_accumulator.append(y_pred.detach().cpu().numpy())
+            #fts_accumulator.append(ft.detach().cpu().numpy())
             save_counter += 1
             
             # Remove tensors from memory explicitly
@@ -177,7 +183,6 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         exp_folder (str): Path to the experiment folder.
         fold_name (str): Name of the fold for saving the files.
     """
-    print("save result")
     for i, (preds, fts) in enumerate(zip(preds_accumulator, fts_accumulator)):
         # Generate unique filenames
         preds_file = exp_folder + f"pred_val_batch_{fold_name}_{batches_processed}_{i}.npy"
