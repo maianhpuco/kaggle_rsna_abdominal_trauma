@@ -63,7 +63,7 @@ def predict_distributed(
     distributed=True,
     world_size=0,
     local_rank=0,
-    save_every=10,
+    save_every=100,
     exp_folder=None,
     fold_name=None  # New argument to specify fold name for saving
 ):
@@ -294,7 +294,7 @@ def kfold_inference(
             distributed=True,
             world_size=config.world_size,
             local_rank=config.local_rank,
-            save_every=10,  # Adjust as needed
+            save_every=100,  # Adjust as needed
             exp_folder=exp_folder,
             fold_name=fold_name,
         )
