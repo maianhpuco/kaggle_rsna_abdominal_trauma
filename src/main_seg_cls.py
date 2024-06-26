@@ -71,6 +71,11 @@ def parse_args():
         default="", 
         help="path to the pretrained model"
     )
+    parser.add_argument(
+        "--retrain", 
+        type=bool, 
+        default=True
+    )
     return parser.parse_args()
     
 
@@ -202,7 +207,7 @@ if __name__ == "__main__":
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size
         config.data_config["val_bs"] = args.batch_size
-        
+    
     if args.pretrained_weights:
         config.pretrained_weights = args.pretrained_weights 
     
@@ -229,7 +234,8 @@ if __name__ == "__main__":
 #     df = df.sample(100000).reset_index(drop=True)
 
     from training.main_seg import k_fold
-    k_fold(config, df, log_folder=log_folder)
+    if args.retrain:
+        k_fold(config, df, log_folder=log_folder)
 
     if len(config.selected_folds) == 4:
         if config.local_rank == 0:
