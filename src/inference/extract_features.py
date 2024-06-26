@@ -151,18 +151,16 @@ def predict_distributed(
     
     print("Doneeeeee inference")
     # Load all saved numpy files and concatenate
-    preds = []
-    fts = []
+    
+    # if distributed:
+    #     fts = sync_across_gpus(torch.from_numpy(fts).cuda(), world_size).cpu().numpy()
+    #     preds = sync_across_gpus(torch.from_numpy(preds).cuda(), world_size).cpu().numpy()
+    #     torch.distributed.barrier()
 
-    if distributed:
-        fts = sync_across_gpus(torch.from_numpy(fts).cuda(), world_size).cpu().numpy()
-        preds = sync_across_gpus(torch.from_numpy(preds).cuda(), world_size).cpu().numpy()
-        torch.distributed.barrier()
-
-    if local_rank == 0:
-        return preds, fts
-    else:
-        return 0, 0 
+    # if local_rank == 0:
+    #     return preds, fts
+    # else:
+    #     return 0, 0 
 
 
 def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name):
@@ -185,9 +183,9 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         
         np.save(preds_file, preds)
         np.save(fts_file, fts)
+        
     memory_used = print_memory_usage()
-    preds = [], fts = [] 
-    print(f"Saved predictions and features after {batches_processed} batches, f{memory_used}")
+    print(f"Saved predictions and features after {batches_processed} batches {memory_used}")
 
 
 
