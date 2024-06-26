@@ -154,6 +154,7 @@ def predict_distributed(
     torch.distributed.barrier()
     
     print("Doneeeeee inference")
+    
     # Load all saved numpy files and concatenate
     
     # if distributed:
@@ -188,6 +189,9 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         np.save(preds_file, preds)
         np.save(fts_file, fts)
         
+    preds_accumulator = []
+    fts_accumulator = [] 
+    
     memory_used = print_memory_usage()
     print(f"Saved predictions and features after {batches_processed} batches {memory_used}")
 
@@ -276,7 +280,7 @@ def kfold_inference(
         # Define fold-specific names for saving
         fold_name = f"fold{fold}"
 
-        pred, fts = predict_distributed(
+        predict_distributed(
             model,
             dataset,
             config.loss_config,
@@ -291,6 +295,8 @@ def kfold_inference(
             fold_name=fold_name,
         )
         
+        preds = []
+        fts = [] 
         print("Start loading the data")
         for preds_file in sorted(glob.glob(exp_folder + f"pred_val_batch_{fold_name}_*.npy")):
             preds.append(np.load(preds_file))
