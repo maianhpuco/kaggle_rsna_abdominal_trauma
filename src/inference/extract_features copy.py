@@ -23,6 +23,7 @@ class Config:
         for k, v in dic.items():
             setattr(self, k, v)
 
+
 def predict_distributed(
     model,
     dataset,
@@ -33,9 +34,6 @@ def predict_distributed(
     distributed=True,
     world_size=0,
     local_rank=0,
-    save_interval=100,  # Save every 100 batches
-    exp_folder=None,    # Folder to save predictions
-    fold=None,          # Fold identifier
 ):
     """
     Make predictions using a PyTorch model on a given dataset.
@@ -51,9 +49,6 @@ def predict_distributed(
         distributed (bool, optional): Whether to use distributed inference. Defaults to True.
         world_size (int, optional): Number of GPUs used in distributed inference. Defaults to 0.
         local_rank (int, optional): Local rank for distributed inference. Defaults to 0.
-        save_interval (int, optional): Interval to save predictions. Defaults to 100.
-        exp_folder (str, optional): Folder to save predictions. Defaults to None.
-        fold (int, optional): Fold identifier for naming the file. Defaults to None.
 
     Returns:
         Tuple: If `local_rank` is 0, returns a tuple containing:
@@ -75,9 +70,6 @@ def predict_distributed(
         local_rank=local_rank,
     )[1]
 
-    batch_count = 0
-    total_batches = len(loader)
-
     with torch.no_grad():
         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
             with torch.cuda.amp.autocast(enabled=use_fp16):
@@ -96,123 +88,20 @@ def predict_distributed(
             preds.append(y_pred.detach())
             fts.append(ft.detach())
 
-            batch_count += 1
+    preds = torch.cat(preds, 0)
+    fts = torch.cat(fts, 0)
 
-            # Periodically save and clear memory
-            if batch_count % save_interval == 0 or batch_count == total_batches:
-                preds_tensor = torch.cat(preds, 0)
-                fts_tensor = torch.cat(fts, 0)
+    if distributed:
+        fts = sync_across_gpus(fts, world_size)
+        preds = sync_across_gpus(preds, world_size)
+        torch.distributed.barrier()
 
-                if distributed:
-                    fts_tensor = sync_across_gpus(fts_tensor, world_size)
-                    preds_tensor = sync_across_gpus(preds_tensor, world_size)
-                    torch.distributed.barrier()
-
-                if local_rank == 0 and exp_folder is not None and fold is not None:
-                    preds_np = preds_tensor.cpu().numpy()
-                    fts_np = fts_tensor.cpu().numpy()
-
-                    np.save(exp_folder + f"pred_val_{fold}_batch{batch_count}.npy", preds_np)
-                    np.save(exp_folder + f"fts_val_{fold}_batch{batch_count}.npy", fts_np)
-
-                    # Clear memory
-                    del preds[:], fts[:]
-                    torch.cuda.empty_cache()
-
-        # Final aggregation and return
-        preds_tensor = torch.cat(preds, 0)
-        fts_tensor = torch.cat(fts, 0)
-
-        if distributed:
-            fts_tensor = sync_across_gpus(fts_tensor, world_size)
-            preds_tensor = sync_across_gpus(preds_tensor, world_size)
-            torch.distributed.barrier()
-
-        if local_rank == 0:
-            preds_np = preds_tensor.cpu().numpy()
-            fts_np = fts_tensor.cpu().numpy()
-            return preds_np, fts_np
-        else:
-            return 0, 0 
-        
-# def predict_distributed(
-#     model,
-#     dataset,
-#     loss_config,
-#     batch_size=64,
-#     use_fp16=False,
-#     num_workers=8,
-#     distributed=True,
-#     world_size=0,
-#     local_rank=0,
-# ):
-#     """
-#     Make predictions using a PyTorch model on a given dataset.
-#     Uses DDP.
-
-#     Args:
-#         model (nn.Module): PyTorch model for making predictions.
-#         dataset (torch.utils.data.Dataset): Dataset used for prediction.
-#         loss_config (dict): Configuration for the loss function.
-#         batch_size (int, optional): Batch size for inference. Defaults to 64.
-#         use_fp16 (bool, optional): Whether to use mixed-precision (fp16) inference. Defaults to False.
-#         num_workers (int, optional): Number of workers for data loading. Defaults to 8.
-#         distributed (bool, optional): Whether to use distributed inference. Defaults to True.
-#         world_size (int, optional): Number of GPUs used in distributed inference. Defaults to 0.
-#         local_rank (int, optional): Local rank for distributed inference. Defaults to 0.
-
-#     Returns:
-#         Tuple: If `local_rank` is 0, returns a tuple containing:
-#             - preds (numpy.ndarray): Predictions from the model.
-#             - fts (numpy.ndarray): Extracted features from the model.
-#         Otherwise, returns (0, 0) for non-zero `local_rank`.
-#     """
-#     model.eval()
-#     preds, fts = [], []
-
-#     loader = define_loaders(
-#         dataset,
-#         dataset,
-#         batch_size=batch_size,
-#         val_bs=batch_size,
-#         num_workers=num_workers,
-#         distributed=distributed,
-#         world_size=world_size,
-#         local_rank=local_rank,
-#     )[1]
-
-#     with torch.no_grad():
-#         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
-#             with torch.cuda.amp.autocast(enabled=use_fp16):
-#                 y_pred, ft = model(img.cuda(), return_fts=True)
-
-#             if loss_config["activation"] == "sigmoid":
-#                 y_pred = y_pred.sigmoid()
-#             elif loss_config["activation"] == "softmax":
-#                 y_pred = y_pred.softmax(-1)
-#             elif loss_config["activation"] == "patient":
-#                 y_pred[:, :2] = y_pred[:, :2].sigmoid()
-#                 y_pred[:, 2:5] = y_pred[:, 2:5].softmax(-1)
-#                 y_pred[:, 5:8] = y_pred[:, 5:8].softmax(-1)
-#                 y_pred[:, 8:] = y_pred[:, 8:].softmax(-1)
-
-#             preds.append(y_pred.detach())
-#             fts.append(ft.detach())
-            
-#     preds = torch.cat(preds, 0)
-#     fts = torch.cat(fts, 0)
-
-#     if distributed:
-#         fts = sync_across_gpus(fts, world_size)
-#         preds = sync_across_gpus(preds, world_size)
-#         torch.distributed.barrier()
-
-#     if local_rank == 0:
-#         preds = preds.cpu().numpy()
-#         fts = fts.cpu().numpy()
-#         return preds, fts
-#     else:
-#         return 0, 0
+    if local_rank == 0:
+        preds = preds.cpu().numpy()
+        fts = fts.cpu().numpy()
+        return preds, fts
+    else:
+        return 0, 0
 
 
 def kfold_inference(
@@ -304,7 +193,7 @@ def kfold_inference(
             batch_size=config.data_config["val_bs"] if batch_size is None else batch_size,
             use_fp16=use_fp16,
             num_workers=num_workers,
-            distributed=distributed, #previous: True
+            distributed=True,
             world_size=config.world_size,
             local_rank=config.local_rank,
         )
@@ -338,4 +227,4 @@ def kfold_inference(
                 df_val_patient,
             )
             for k, v in losses.items():
-                print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}")
+                print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}") 

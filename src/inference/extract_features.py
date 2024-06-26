@@ -270,8 +270,16 @@ def save_batch_results(
         preds_accumulator (list): List of prediction arrays to be saved.
         fts_accumulator (list): List of feature arrays to be saved.
     """
+    if not preds_accumulator:
+        print("No predictions to save.")
+        return
+    
     preds_result = np.concatenate(preds_accumulator, axis=0)
     fts_result = np.concatenate(fts_accumulator, axis=0)
+
+    if len(preds_result) != len(df_val):
+        print(f"Warning: Length of predictions ({len(preds_result)}) does not match length of df_val ({len(df_val)}).")
+        return
 
     np.save(exp_folder + f"pred_val_{fold}.npy", preds_result)
 
@@ -300,4 +308,5 @@ def save_batch_results(
     )
     for k, v in losses.items():
         print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}")
+ 
  
