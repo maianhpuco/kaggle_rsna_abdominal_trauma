@@ -179,8 +179,7 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         exp_folder (str): Path to the experiment folder.
         fold_name (str): Name of the fold for saving the files.
     """
-
-
+    print("save result")
     for i, (preds, fts) in enumerate(zip(preds_accumulator, fts_accumulator)):
         # Generate unique filenames
         preds_file = exp_folder + f"pred_val_batch_{fold_name}_{batches_processed}_{i}.npy"
@@ -191,7 +190,6 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         
     preds_accumulator = []
     fts_accumulator = [] 
-    
     memory_used = print_memory_usage()
     print(f"Saved predictions and features after {batches_processed} batches {memory_used}")
 
