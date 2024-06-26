@@ -29,7 +29,7 @@ from model_zoo.models import define_model
 from util.metrics import rsna_loss
 from util.torch import load_model_weights, sync_across_gpus
 from params import IMAGE_TARGETS
-
+import gc  # Import garbage collection 
 import psutil
  
 def print_memory_usage():
@@ -140,6 +140,7 @@ def predict_distributed(
                 # Reset accumulators and counter
                 preds_accumulator, fts_accumulator = [], []
                 save_counter = 0
+                gc.collect()
 
             batches_processed += 1
 
@@ -148,6 +149,7 @@ def predict_distributed(
         save_results(
             preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold_name
         )
+        gc.collect() 
      
     torch.distributed.barrier()
     
