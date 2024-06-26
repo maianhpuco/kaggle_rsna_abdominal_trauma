@@ -57,13 +57,13 @@ def predict_distributed(
     model,
     dataset,
     loss_config,
-    batch_size=64,
+    batch_size=32,
     use_fp16=False,
     num_workers=8,
     distributed=True,
     world_size=0,
     local_rank=0,
-    save_every=100,
+    save_every=20,
     exp_folder=None,
     fold_name=None  # New argument to specify fold name for saving
 ):
@@ -204,8 +204,8 @@ def kfold_inference(
     debug=False,
     use_fp16=False,
     save=False,
-    num_workers=8,
-    batch_size=None,
+    num_workers=1,
+    batch_size=32,
     distributed=False,
     config=None,
 ):
@@ -286,11 +286,11 @@ def kfold_inference(
             config.loss_config,
             batch_size=config.data_config["val_bs"] if batch_size is None else batch_size,
             use_fp16=use_fp16,
-            num_workers=num_workers,
+            num_workers=1, #num_workers,
             distributed=True,
             world_size=config.world_size,
             local_rank=config.local_rank,
-            save_every=10,  # Adjust as needed
+            save_every=30,  # Adjust as needed
             exp_folder=exp_folder,
             fold_name=fold_name,
         )
