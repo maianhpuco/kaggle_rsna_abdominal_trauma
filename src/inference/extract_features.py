@@ -209,7 +209,7 @@ def kfold_inference(
     use_fp16=False,
     save=False,
     num_workers=1,
-    batch_size=32,
+    batch_size=64,
     distributed=False,
     config=None,
 ):
@@ -288,7 +288,7 @@ def kfold_inference(
             model,
             dataset,
             config.loss_config,
-            batch_size=config.data_config["val_bs"] if batch_size is None else batch_size,
+            batch_size=64, #config.data_config["val_bs"] if batch_size is None else batch_size,
             use_fp16=use_fp16,
             num_workers=1, #num_workers,
             distributed=True,
