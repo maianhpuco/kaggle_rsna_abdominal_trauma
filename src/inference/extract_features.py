@@ -87,6 +87,10 @@ def predict_distributed(
 
             preds.append(y_pred.detach())
             fts.append(ft.detach())
+            
+            # # Optional: Clear GPU memory periodically
+            # if len(preds) % 100 == 0:
+            #     torch.cuda.empty_cache()
 
     preds = torch.cat(preds, 0)
     fts = torch.cat(fts, 0)
