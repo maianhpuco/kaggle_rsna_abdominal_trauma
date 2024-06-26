@@ -193,7 +193,7 @@ def kfold_inference(
             batch_size=config.data_config["val_bs"] if batch_size is None else batch_size,
             use_fp16=use_fp16,
             num_workers=num_workers,
-            distributed=True,
+            distributed=distributed, #previous: True
             world_size=config.world_size,
             local_rank=config.local_rank,
         )
