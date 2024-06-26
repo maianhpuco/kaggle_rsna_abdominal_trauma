@@ -35,15 +35,14 @@ import psutil
 def print_memory_usage():
     # Get total system memory and current memory used
     svmem = psutil.virtual_memory()
-    print(f"Total Memory: {svmem.total / (1024 ** 3):.2f} GB")
-    print(f"Used Memory : {svmem.used / (1024 ** 3):.2f} GB")
+    print(f"Total: {svmem.total / (1024 ** 3):.2f} GB", f"Used : {svmem.used / (1024 ** 3):.2f} GB")
 
-    # Check GPU memory usage if CUDA is available
-    if torch.cuda.is_available():
-        print("GPU Memory Usage:")
-        for i in range(torch.cuda.device_count()):
-            gpu_stats = torch.cuda.memory_stats(i)
-            print(f"  GPU {i}: Used {gpu_stats['allocated_bytes.all.current'] / (1024 ** 3):.2f} GB")
+    # # Check GPU memory usage if CUDA is available
+    # if torch.cuda.is_available():
+    #     print("GPU Memory Usage:")
+    #     for i in range(torch.cuda.device_count()):
+    #         gpu_stats = torch.cuda.memory_stats(i)
+    #         print(f"  GPU {i}: Used {gpu_stats['allocated_bytes.all.current'] / (1024 ** 3):.2f} GB")
  
  
 class Config:
@@ -129,7 +128,10 @@ def predict_distributed(
             preds_accumulator.append(y_pred.detach().cpu().numpy())
             fts_accumulator.append(ft.detach().cpu().numpy())
             save_counter += 1
-
+            # Remove tensors from memory explicitly
+            del y_pred, ft, img
+            torch.cuda.empty_cache()
+            
             if save_counter >= save_every:
                 # Save accumulated results
                 save_results(
