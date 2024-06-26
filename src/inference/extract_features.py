@@ -130,8 +130,6 @@ def predict_distributed(
             save_counter += 1
             
             # Remove tensors from memory explicitly
-            del y_pred, ft, img
-        
             if save_counter >= save_every:
                 # Save accumulated results
                 save_results(
