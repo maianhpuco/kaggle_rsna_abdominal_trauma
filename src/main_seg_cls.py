@@ -129,7 +129,7 @@ class Config:
         "activation_aux": "",
         "ousm_k": 0,  # todo ?
     }
-    BATCH_SIZE = 16
+    BATCH_SIZE = 64
     data_config = {
         "batch_size": BATCH_SIZE,
         "val_bs": BATCH_SIZE,
