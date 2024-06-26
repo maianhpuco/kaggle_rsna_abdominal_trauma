@@ -221,7 +221,8 @@ if __name__ == "__main__":
 
         save_config(config, log_folder + "config.json")
     if config.local_rank == 0:
-        if args.retrain: 
+        if args.retrain:
+            print("args.retrain", args.retrain)
             print("Device :", torch.cuda.get_device_name(0), "\n")
 
             print(f"- Model {config.name}")
