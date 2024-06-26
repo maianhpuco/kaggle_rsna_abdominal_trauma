@@ -221,19 +221,23 @@ if __name__ == "__main__":
 
         save_config(config, log_folder + "config.json")
     if config.local_rank == 0:
-        print("Device :", torch.cuda.get_device_name(0), "\n")
+        if args.retrain: 
+            print("Device :", torch.cuda.get_device_name(0), "\n")
 
-        print(f"- Model {config.name}")
-        print(f"- Epochs {config.epochs}")
-        print(
-            f"- Learning rate {config.optimizer_config['lr']:.1e}   (n_gpus={config.world_size})"
-        )
-        print("\n -> Training\n")
-        print("\n Print config: ", config.__dict__)
+            print(f"- Model {config.name}")
+            print(f"- Epochs {config.epochs}")
+            print(
+                f"- Learning rate {config.optimizer_config['lr']:.1e}   (n_gpus={config.world_size})"
+            )
+            print("\n -> Training\n")
+        else:
+            print("\n -> Not Training again, check log_folder: ", log_folder)
+        #print("\n Print config: ", config.__dict__)
     df = prepare_seg_data(data_path=DATA_PATH)
 #     df = df.sample(100000).reset_index(drop=True)
 
     from training.main_seg import k_fold
+    
     if args.retrain:
         k_fold(config, df, log_folder=log_folder)
 
