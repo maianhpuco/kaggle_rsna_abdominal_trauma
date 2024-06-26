@@ -73,8 +73,8 @@ def parse_args():
     )
     parser.add_argument(
         "--retrain", 
-        type=bool, 
-        default=True
+        action=store_false, 
+        help="Whether to retrain the model" 
     )
     return parser.parse_args()
     
