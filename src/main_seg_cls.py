@@ -245,7 +245,7 @@ if __name__ == "__main__":
     if len(config.selected_folds) == 4:
         if config.local_rank == 0:
             print("\n -> Extracting features\n")
-        from inference.extract_features_new import kfold_inference
+        from inference.extract_features import kfold_inference
 
         df_patient, df_img = prepare_data(DATA_PATH)
         kfold_inference(
