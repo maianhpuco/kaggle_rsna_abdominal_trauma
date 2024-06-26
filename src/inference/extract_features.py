@@ -128,10 +128,10 @@ def predict_distributed(
             preds_accumulator.append(y_pred.detach().cpu().numpy())
             fts_accumulator.append(ft.detach().cpu().numpy())
             save_counter += 1
+            
             # Remove tensors from memory explicitly
             del y_pred, ft, img
-            torch.cuda.empty_cache()
-            
+        
             if save_counter >= save_every:
                 # Save accumulated results
                 save_results(
