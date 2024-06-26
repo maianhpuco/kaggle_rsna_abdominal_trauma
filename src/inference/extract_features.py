@@ -30,6 +30,22 @@ from util.metrics import rsna_loss
 from util.torch import load_model_weights, sync_across_gpus
 from params import IMAGE_TARGETS
 
+import psutil
+ 
+def print_memory_usage():
+    # Get total system memory and current memory used
+    svmem = psutil.virtual_memory()
+    print(f"Total Memory: {svmem.total / (1024 ** 3):.2f} GB")
+    print(f"Used Memory : {svmem.used / (1024 ** 3):.2f} GB")
+
+    # Check GPU memory usage if CUDA is available
+    if torch.cuda.is_available():
+        print("GPU Memory Usage:")
+        for i in range(torch.cuda.device_count()):
+            gpu_stats = torch.cuda.memory_stats(i)
+            print(f"  GPU {i}: Used {gpu_stats['allocated_bytes.all.current'] / (1024 ** 3):.2f} GB")
+ 
+ 
 class Config:
     """
     Placeholder to load a config from a saved json
@@ -130,18 +146,13 @@ def predict_distributed(
         save_results(
             preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold_name
         )
-    
+     
     torch.distributed.barrier()
+    
+    print("Doneeeeee inference")
     # Load all saved numpy files and concatenate
     preds = []
     fts = []
-    for preds_file in sorted(glob.glob(exp_folder + f"pred_val_batch_{fold_name}_*.npy")):
-        preds.append(np.load(preds_file))
-    for fts_file in sorted(glob.glob(exp_folder + f"fts_val_batch_{fold_name}_*.npy")):
-        fts.append(np.load(fts_file))
-
-    preds = np.concatenate(preds, axis=0)
-    fts = np.concatenate(fts, axis=0)
 
     if distributed:
         fts = sync_across_gpus(torch.from_numpy(fts).cuda(), world_size).cpu().numpy()
@@ -174,8 +185,10 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         
         np.save(preds_file, preds)
         np.save(fts_file, fts)
+    memory_used = print_memory_usage()
+    preds = [], fts = [] 
+    print(f"Saved predictions and features after {batches_processed} batches, f{memory_used}")
 
-    print(f"Saved predictions and features after {batches_processed} batches.")
 
 
 def kfold_inference(
@@ -261,7 +274,7 @@ def kfold_inference(
         # Define fold-specific names for saving
         fold_name = f"fold{fold}"
 
-        pred, fts = predict_distributed(
+        predict_distributed(
             model,
             dataset,
             config.loss_config,
@@ -275,6 +288,15 @@ def kfold_inference(
             exp_folder=exp_folder,
             fold_name=fold_name,
         )
+        print("Start loading the data")
+        for preds_file in sorted(glob.glob(exp_folder + f"pred_val_batch_{fold_name}_*.npy")):
+            preds.append(np.load(preds_file))
+    
+        for fts_file in sorted(glob.glob(exp_folder + f"fts_val_batch_{fold_name}_*.npy")):
+            fts.append(np.load(fts_file))
+
+        preds = np.concatenate(preds, axis=0)
+        fts = np.concatenate(fts, axis=0) 
         
         if config.local_rank == 0:
             pred, fts = pred[: len(dataset)], fts[: len(dataset)]
