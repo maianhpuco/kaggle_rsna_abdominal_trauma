@@ -121,9 +121,6 @@ def predict_distributed(
         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, ft = model(img.cuda(), return_fts=True)
-                print(img.shape)
-                break
-
             if loss_config["activation"] == "sigmoid":
                 y_pred = y_pred.sigmoid()
             elif loss_config["activation"] == "softmax":
