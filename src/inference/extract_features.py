@@ -87,6 +87,7 @@ def predict_distributed(
     Returns:
         None
     """
+    print("----------hello---------")
     model.eval()
     #preds_accumulator, fts_accumulator = [], []
     # Initial empty numpy arrays
