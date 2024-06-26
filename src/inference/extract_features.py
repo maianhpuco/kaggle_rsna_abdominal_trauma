@@ -23,7 +23,6 @@ class Config:
         for k, v in dic.items():
             setattr(self, k, v)
 
-
 def predict_distributed(
     model,
     dataset,
@@ -34,6 +33,7 @@ def predict_distributed(
     distributed=True,
     world_size=0,
     local_rank=0,
+    save_every=100,
 ):
     """
     Make predictions using a PyTorch model on a given dataset.
@@ -49,6 +49,7 @@ def predict_distributed(
         distributed (bool, optional): Whether to use distributed inference. Defaults to True.
         world_size (int, optional): Number of GPUs used in distributed inference. Defaults to 0.
         local_rank (int, optional): Local rank for distributed inference. Defaults to 0.
+        save_every (int, optional): Frequency (in batches) to save results. Defaults to 100.
 
     Returns:
         Tuple: If `local_rank` is 0, returns a tuple containing:
@@ -58,22 +59,20 @@ def predict_distributed(
     """
     model.eval()
     preds, fts = [], []
+    batches_processed = 0
 
-    loader = define_loaders(
-        dataset,
+    loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        val_bs=batch_size,
+        shuffle=False,
         num_workers=num_workers,
-        distributed=distributed,
-        world_size=world_size,
-        local_rank=local_rank,
-    )[1]
+        pin_memory=True,
+    )
 
     with torch.no_grad():
         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                y_pred, ft = model(img.cuda(), return_fts=True)
+                y_pred, ft = model(img.cuda(non_blocking=True), return_fts=True)
 
             if loss_config["activation"] == "sigmoid":
                 y_pred = y_pred.sigmoid()
@@ -88,26 +87,44 @@ def predict_distributed(
             preds.append(y_pred.detach())
             fts.append(ft.detach())
             
-            # Optional: Clear GPU memory periodically
-            if len(preds) % 100 == 0:
+            batches_processed += 1
+
+            # Save results periodically
+            if batches_processed % save_every == 0:
+                preds_result = torch.cat(preds, dim=0)
+                fts_result = torch.cat(fts, dim=0)
+
+                if distributed:
+                    fts_result = sync_across_gpus(fts_result, world_size)
+                    preds_result = sync_across_gpus(preds_result, world_size)
+                    torch.distributed.barrier()
+
+                if local_rank == 0:
+                    preds_result = preds_result.cpu().numpy()
+                    fts_result = fts_result.cpu().numpy()
+                    yield preds_result, fts_result
+
+                preds, fts = [], []
+                
+                # Clear GPU memory
                 torch.cuda.empty_cache()
 
-    preds = torch.cat(preds, 0)
-    fts = torch.cat(fts, 0)
+    # Final yield of remaining results
+    preds_result = torch.cat(preds, dim=0)
+    fts_result = torch.cat(fts, dim=0)
 
     if distributed:
-        fts = sync_across_gpus(fts, world_size)
-        preds = sync_across_gpus(preds, world_size)
+        fts_result = sync_across_gpus(fts_result, world_size)
+        preds_result = sync_across_gpus(preds_result, world_size)
         torch.distributed.barrier()
 
     if local_rank == 0:
-        preds = preds.cpu().numpy()
-        fts = fts.cpu().numpy()
-        return preds, fts
+        preds_result = preds_result.cpu().numpy()
+        fts_result = fts_result.cpu().numpy()
+        yield preds_result, fts_result
     else:
-        return 0, 0
-
-
+        yield 0, 0
+ 
 def kfold_inference(
     df_patient,
     df_img,
@@ -119,6 +136,7 @@ def kfold_inference(
     batch_size=None,
     distributed=False,
     config=None,
+    save_every=100,
 ):
     """
     Perform k-fold inference on a dataset using a trained model.
@@ -134,6 +152,7 @@ def kfold_inference(
         batch_size (int, optional): Batch size for inference. Defaults to None.
         distributed (bool, optional): Whether to use distributed inference. Defaults to False.
         config (Config, optional): Configuration object for the experiment. Defaults to None.
+        save_every (int, optional): Frequency (in batches) to save results. Defaults to 100.
     """
     if config is None:
         config = Config(json.load(open(exp_folder + "config.json", "r")))
@@ -172,9 +191,7 @@ def kfold_inference(
                 broadcast_buffers=False,
             )
 
-        df_val = df_img[df_img["fold"] == fold].reset_index(
-            drop=True
-        )
+        df_val = df_img[df_img["fold"] == fold].reset_index(drop=True)
 
         transforms = get_transfos(
             augment=False,
@@ -190,45 +207,97 @@ def kfold_inference(
             stride=config.stride if hasattr(config, "stride") else 1,
         )
 
-        pred, fts = predict_distributed(
+        generator = predict_distributed(
             model,
             dataset,
             config.loss_config,
             batch_size=config.data_config["val_bs"] if batch_size is None else batch_size,
             use_fp16=use_fp16,
             num_workers=num_workers,
-            distributed=distributed, #previous: True
+            distributed=distributed,
             world_size=config.world_size,
             local_rank=config.local_rank,
+            save_every=save_every,
         )
-        if config.local_rank == 0:
-            pred, fts = pred[: len(dataset)], fts[: len(dataset)]
 
-        if save and config.local_rank == 0:
-            np.save(exp_folder + f"pred_val_{fold}.npy", pred)
+        preds_accumulator, fts_accumulator = [], []
+        batches_processed = 0
 
-            pred_cols = []
-            for i, tgt in enumerate(IMAGE_TARGETS):
-                df_val[f"pred_{tgt}"] = pred[: len(df_val), i]
-                pred_cols.append(f"pred_{tgt}")
-            df_val_patient = (
-                df_val[["patient_id"] + pred_cols].groupby("patient_id").mean()
+        for preds, fts in generator:
+            preds_accumulator.append(preds)
+            fts_accumulator.append(fts)
+            batches_processed += 1
+
+            # Save and process results every save_every batches
+            if batches_processed % save_every == 0:
+                save_batch_results(
+                    exp_folder,
+                    fold,
+                    df_val,
+                    df_patient,
+                    preds_accumulator,
+                    fts_accumulator,
+                )
+                preds_accumulator, fts_accumulator = [], []
+
+        # Final save of remaining results
+        if preds_accumulator:
+            save_batch_results(
+                exp_folder,
+                fold,
+                df_val,
+                df_patient,
+                preds_accumulator,
+                fts_accumulator,
             )
 
-            df_val_patient = df_val_patient.merge(
-                df_patient[df_patient["fold"] == fold], on="patient_id", how="left"
-            )
+def save_batch_results(
+    exp_folder,
+    fold,
+    df_val,
+    df_patient,
+    preds_accumulator,
+    fts_accumulator,
+):
+    """
+    Save batch results to disk.
 
-            print()
-            for tgt in IMAGE_TARGETS:
-                auc = roc_auc_score(df_val_patient[tgt], df_val_patient[f"pred_{tgt}"])
-                print(f"- {tgt} auc : {auc:.3f}")
+    Args:
+        exp_folder (str): Path to the experiment folder.
+        fold (int): Fold number.
+        df_val (pd.DataFrame): DataFrame containing validation image information.
+        df_patient (pd.DataFrame): DataFrame containing patient information.
+        preds_accumulator (list): List of prediction arrays to be saved.
+        fts_accumulator (list): List of feature arrays to be saved.
+    """
+    preds_result = np.concatenate(preds_accumulator, axis=0)
+    fts_result = np.concatenate(fts_accumulator, axis=0)
 
-            losses, avg_loss = rsna_loss(
-                df_val_patient[
-                    ["pred_bowel_injury", "pred_extravasation_injury"]
-                ].values,
-                df_val_patient,
-            )
-            for k, v in losses.items():
-                print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}")
+    np.save(exp_folder + f"pred_val_{fold}.npy", preds_result)
+
+    pred_cols = []
+    for i, tgt in enumerate(IMAGE_TARGETS):
+        df_val[f"pred_{tgt}"] = preds_result[: len(df_val), i]
+        pred_cols.append(f"pred_{tgt}")
+    df_val_patient = (
+        df_val[["patient_id"] + pred_cols].groupby("patient_id").mean()
+    )
+
+    df_val_patient = df_val_patient.merge(
+        df_patient[df_patient["fold"] == fold], on="patient_id", how="left"
+    )
+
+    print()
+    for tgt in IMAGE_TARGETS:
+        auc = roc_auc_score(df_val_patient[tgt], df_val_patient[f"pred_{tgt}"])
+        print(f"- {tgt} auc : {auc:.3f}")
+
+    losses, avg_loss = rsna_loss(
+        df_val_patient[
+            ["pred_bowel_injury", "pred_extravasation_injury"]
+        ].values,
+        df_val_patient,
+    )
+    for k, v in losses.items():
+        print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}")
+ 
