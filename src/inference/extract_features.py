@@ -91,8 +91,8 @@ def predict_distributed(
     model.eval()
     #preds_accumulator, fts_accumulator = [], []
     # Initial empty numpy arrays
-    preds_accumulator = [] 
-    fts_accumulator = [] 
+    # preds_accumulator = [] 
+    # fts_accumulator = [] 
     # preds_accumulator = np.empty((0, model.num_classes))  # Assuming model.num_classes is the number of output classes
     # fts_accumulator = np.empty((0, model.feature_dim))  # Assuming model.feature_dim is the dimension of the features 
     
@@ -109,6 +109,7 @@ def predict_distributed(
 
     batches_processed = 0
     save_counter = 0
+    preds_accumulator, fts_accumulator = [], [] 
     
     # Clear previous run  results for this fold
     for f in glob.glob(exp_folder + f"pred_val_batch_{fold_name}_*.npy"):
