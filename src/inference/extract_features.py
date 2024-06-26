@@ -274,7 +274,7 @@ def kfold_inference(
         # Define fold-specific names for saving
         fold_name = f"fold{fold}"
 
-        predict_distributed(
+        pred, fts = predict_distributed(
             model,
             dataset,
             config.loss_config,
@@ -288,6 +288,7 @@ def kfold_inference(
             exp_folder=exp_folder,
             fold_name=fold_name,
         )
+        
         print("Start loading the data")
         for preds_file in sorted(glob.glob(exp_folder + f"pred_val_batch_{fold_name}_*.npy")):
             preds.append(np.load(preds_file))
