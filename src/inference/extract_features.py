@@ -33,7 +33,7 @@ def predict_distributed(
     distributed=True,
     world_size=0,
     local_rank=0,
-    save_every=100,
+    save_every=20,
 ):
     """
     Make predictions using a PyTorch model on a given dataset.
@@ -136,7 +136,7 @@ def kfold_inference(
     batch_size=None,
     distributed=False,
     config=None,
-    save_every=100,
+    save_every=20,
 ):
     """
     Perform k-fold inference on a dataset using a trained model.
