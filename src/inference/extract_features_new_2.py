@@ -15,6 +15,7 @@ from util.torch import load_model_weights, sync_across_gpus
 from params import IMAGE_TARGETS
 
 def print_memory_usage():
+    import psutil 
     # Get total system memory and current memory used
     svmem = psutil.virtual_memory()
     print(f"Total: {svmem.total / (1024 ** 3):.2f} GB", f"Used : {svmem.used / (1024 ** 3):.2f} GB")
