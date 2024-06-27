@@ -129,8 +129,8 @@ def predict_distributed(
             preds_accumulator.append(y_pred_cpu)
             fts_accumulator.append(ft_cpu) 
             
-            preds_accumulator.append(y_pred.detach())
-            fts_accumulator.append(ft.detach())
+            # preds_accumulator.append(y_pred.detach())
+            # fts_accumulator.append(ft.detach())
             save_counter+=1
             
             if save_counter % save_every == 0:
