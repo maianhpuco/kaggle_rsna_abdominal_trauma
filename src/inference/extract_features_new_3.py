@@ -5,7 +5,6 @@ import pandas as pd
 import torch
 from sklearn.metrics import roc_auc_score
 from torch.nn.parallel import DistributedDataParallel
-from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from data.dataset import AbdominalInfDataset
@@ -26,32 +25,6 @@ def print_memory_usage():
           f"Used : {svmem.used / (1024 ** 3):.2f} GB")
 
 
-def save_results(preds_accumulator, fts_accumulator, batches_processed,
-                 exp_folder, fold):
-    """
-    Save accumulated predictions and features to numpy files with unique filenames.
-
-    Args:
-        preds_accumulator (list): List of accumulated prediction arrays.
-        fts_accumulator (list): List of accumulated feature arrays.
-        batches_processed (int): Total number of batches processed.
-        exp_folder (str): Path to the experiment folder.
-        fold (str): Name of the fold for saving the files.
-    """
-    for i, (preds, fts) in enumerate(zip(preds_accumulator, fts_accumulator)):
-        # Generate unique filenames
-        preds_file = exp_folder + f"pred_val_batch_{fold}_{batches_processed}_{i}.npy"
-        fts_file = exp_folder + f"fts_val_batch_{fold}_{batches_processed}_{i}.npy"
-
-        np.save(preds_file, preds)
-        np.save(fts_file, fts)
-
-    preds_accumulator = []
-    fts_accumulator = []
-    print(f"Saved predictions and features after {batches_processed} batches")
-    print_memory_usage()
-
-
 class Config:
     """
     Placeholder to load a config from a saved json
@@ -62,17 +35,17 @@ class Config:
             setattr(self, k, v)
 
 
-def predict_distributed(model,
-                        dataset,
-                        loss_config,
-                        batch_size=64,
-                        use_fp16=False,
-                        num_workers=8,
-                        distributed=True,
-                        world_size=0,
-                        local_rank=0,
-                        exp_folder=None,
-                        fold=None):
+def predict_distributed(
+    model,
+    dataset,
+    loss_config,
+    batch_size=64,
+    use_fp16=False,
+    num_workers=8,
+    distributed=True,
+    world_size=0,
+    local_rank=0,
+):
     """
     Make predictions using a PyTorch model on a given dataset.
     Uses DDP.
@@ -87,7 +60,7 @@ def predict_distributed(model,
         distributed (bool, optional): Whether to use distributed inference. Defaults to True.
         world_size (int, optional): Number of GPUs used in distributed inference. Defaults to 0.
         local_rank (int, optional): Local rank for distributed inference. Defaults to 0.
-1
+
     Returns:
         Tuple: If `local_rank` is 0, returns a tuple containing:
             - preds (numpy.ndarray): Predictions from the model.
@@ -107,11 +80,6 @@ def predict_distributed(model,
         world_size=world_size,
         local_rank=local_rank,
     )[1]
-    # variable to save result
-    batches_processed = 0
-    save_every = 200
-    preds_accumulator, fts_accumulator = [], []
-    save_counter = 0
 
     with torch.no_grad():
         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
@@ -128,51 +96,23 @@ def predict_distributed(model,
                 y_pred[:, 5:8] = y_pred[:, 5:8].softmax(-1)
                 y_pred[:, 8:] = y_pred[:, 8:].softmax(-1)
 
-            # Convert to CPU and NumPy before appending
-            y_pred_cpu = y_pred.detach().cpu().numpy()
-            ft_cpu = ft.detach().cpu().numpy()
+            preds.append(y_pred.detach())
+            fts.append(ft.detach())
 
-            preds_accumulator.append(y_pred_cpu)
-            fts_accumulator.append(ft_cpu)
+    preds = torch.cat(preds, 0)
+    fts = torch.cat(fts, 0)
+    print("a chunk output shape :", preds.shape)
+    if distributed:
+        fts = sync_across_gpus(fts, world_size)
+        preds = sync_across_gpus(preds, world_size)
+        torch.distributed.barrier()
 
-            # preds_accumulator.append(y_pred.detach())
-            # fts_accumulator.append(ft.detach())
-            save_counter += 1
-
-            if save_counter % save_every == 0:
-                save_results(preds_accumulator,
-                             fts_accumulator,
-                             batches_processed,
-                             exp_folder,
-                             fold=fold)
-                # Reset accumulators and counter
-                preds_accumulator, fts_accumulator = [], []
-            torch.cuda.empty_cache()
-    # Final save of remaining results
-
-    if preds_accumulator:
-        save_results(preds_accumulator,
-                     fts_accumulator,
-                     batches_processed,
-                     exp_folder,
-                     fold=fold)
-        preds_accumulator, fts_accumulator = [], []
-        torch.cuda.empty_cache()
-
-    # preds = torch.cat(preds, 0)
-    # fts = torch.cat(fts, 0)
-
-    # if distributed:
-    #     fts = sync_across_gpus(fts, world_size)
-    #     preds = sync_across_gpus(preds, world_size)
-    #     torch.distributed.barrier()
-
-    # if local_rank == 0:
-    #     preds = preds.cpu().numpy()
-    #     fts = fts.cpu().numpy()
-    #     return preds, fts
-    # else:
-    #     return 0, 0
+    if local_rank == 0:
+        preds = preds.cpu().numpy()
+        fts = fts.cpu().numpy()
+        return preds, fts
+    else:
+        return 0, 0
 
 
 def kfold_inference(
@@ -186,7 +126,6 @@ def kfold_inference(
     batch_size=None,
     distributed=False,
     config=None,
-    save_after=100,
 ):
     """
     Perform k-fold inference on a dataset using a trained model.
@@ -251,47 +190,47 @@ def kfold_inference(
             crop=config.crop,
         )
 
-        dataset = AbdominalInfDataset(
-            df_val,
-            transforms=transforms,
-            frames_chanel=config.frames_chanel if hasattr(
-                config, "frames_chanel") else 0,
-            n_frames=config.n_frames if hasattr(config, "n_frames") else 1,
-            stride=config.stride if hasattr(config, "stride") else 1,
-        )
+        #define chunk to prevent OOM
+        chunk_size = 10000
+        df_val_chunks = np.array_split(df_val,
+                                       np.ceil(len(df_val) / chunk_size))
 
-        import glob
-        import os
+        for chunk_idx, df_val_chunk in enumerate(df_val_chunks):
+            print(f"processing chunk number :{chunk_idx}, \
+                shape: {df_val_chunk.shape}")
 
-        # Clear previous run  results for this fold
-        for f in glob.glob(exp_folder + f"pred_val_batch_{fold}_*.npy"):
-            os.remove(f)
-        for f in glob.glob(exp_folder + f"fts_val_batch_{fold}_*.npy"):
-            os.remove(f)
-        print("done remove old data, start runing prediction")
-        predict_distributed(model,
-                            dataset,
-                            config.loss_config,
-                            batch_size=config.data_config["val_bs"]
-                            if batch_size is None else batch_size,
-                            use_fp16=use_fp16,
-                            num_workers=num_workers,
-                            distributed=True,
-                            world_size=config.world_size,
-                            local_rank=config.local_rank,
-                            exp_folder=exp_folder,
-                            fold=fold)
-        print("Done inference,!!!! Start loading the data")
-        for preds_file in sorted(
-                glob.glob(exp_folder + f"pred_val_batch_{fold}_*.npy")):
-            preds.append(np.load(preds_file))
+            dataset = AbdominalInfDataset(
+                df_val_chunk,
+                transforms=transforms,
+                frames_chanel=config.frames_chanel if hasattr(
+                    config, "frames_chanel") else 0,
+                n_frames=config.n_frames if hasattr(config, "n_frames") else 1,
+                stride=config.stride if hasattr(config, "stride") else 1,
+            )
 
-        for fts_file in sorted(
-                glob.glob(exp_folder + f"fts_val_batch_{fold}_*.npy")):
-            fts.append(np.load(fts_file))
+            pred_chunk, fts_chunk = predict_distributed(
+                model,
+                dataset,
+                config.loss_config,
+                batch_size=config.data_config["val_bs"]
+                if batch_size is None else batch_size,
+                use_fp16=use_fp16,
+                num_workers=num_workers,
+                distributed=True,
+                world_size=config.world_size,
+                local_rank=config.local_rank,
+            )
+            if chunk_idx == 0:
+                pred = pred_chunk
+                fts = fts_chunk
+            pred = torch.cat(pred_chunk, dim=0)
+            fts = torch.cat(fts_chunk, dim=0)
 
-        preds = np.concatenate(preds, axis=0)
-        fts = np.concatenate(fts, axis=0)
+            print("after append", pred.shape)
+            print_memory_usage()
+
+
+#---------- done with looping chunking
 
         if config.local_rank == 0:
             pred, fts = pred[:len(dataset)], fts[:len(dataset)]
