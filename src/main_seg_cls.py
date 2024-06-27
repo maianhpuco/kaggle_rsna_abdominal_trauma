@@ -168,7 +168,7 @@ if __name__ == "__main__":
     if config.local_rank == 0:
         print("\nStarting !")
     args = parse_args()
-
+    distributed = False
     if not config.distributed:
         device = args.fold if args.fold > -1 else args.device
         time.sleep(device)
@@ -240,6 +240,7 @@ if __name__ == "__main__":
     if len(config.selected_folds) == 4:
         if config.local_rank == 0:
             print("\n -> Extracting features\n")
+
         from inference.extract_features_new_3 import kfold_inference
 
         df_patient, df_img = prepare_data(DATA_PATH)

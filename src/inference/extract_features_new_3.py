@@ -101,6 +101,7 @@ def predict_distributed(
 
     preds = torch.cat(preds, 0)
     fts = torch.cat(fts, 0)
+
     print("a chunk output shape :", preds.shape)
     if distributed:
         fts = sync_across_gpus(fts, world_size)
@@ -196,7 +197,7 @@ def kfold_inference(
                                        np.ceil(len(df_val) / chunk_size))
 
         for chunk_idx, df_val_chunk in enumerate(df_val_chunks):
-            print(f"processing chunk number :{chunk_idx}, \
+            print(f"------> processing chunk number :{chunk_idx}, \
                 shape: {df_val_chunk.shape}")
 
             dataset = AbdominalInfDataset(
@@ -226,7 +227,7 @@ def kfold_inference(
             pred = torch.cat(pred_chunk, dim=0)
             fts = torch.cat(fts_chunk, dim=0)
 
-            print("after append", pred.shape)
+            print("+++++ After append", pred.shape)
             print_memory_usage()
 
 
