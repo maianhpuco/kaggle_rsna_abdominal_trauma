@@ -1,14 +1,15 @@
+import argparse
 import os
 import time
-import torch
 import warnings
-import argparse
 
-from data.preparation import prepare_seg_data, prepare_data
-from util.torch import init_distributed
-from util.logger import create_logger, save_config, prepare_log_folder, get_last_log_folder
+import torch
 
+from data.preparation import prepare_data, prepare_seg_data
 from params import DATA_PATH
+from util.logger import (create_logger, get_last_log_folder,
+                         prepare_log_folder, save_config)
+from util.torch import init_distributed
 
 
 def parse_args():
@@ -65,19 +66,14 @@ def parse_args():
         default=0.0,
         help="Weight decay",
     )
-    parser.add_argument(
-        "--pretrained_weights", 
-        type=str, 
-        default="", 
-        help="path to the pretrained model"
-    )
-    parser.add_argument(
-        "--retrain", 
-        action='store_true', 
-        help="Whether to retrain the model" 
-    )
+    parser.add_argument("--pretrained_weights",
+                        type=str,
+                        default="",
+                        help="path to the pretrained model")
+    parser.add_argument("--retrain",
+                        action='store_true',
+                        help="Whether to retrain the model")
     return parser.parse_args()
-    
 
 
 class Config:
@@ -179,7 +175,7 @@ if __name__ == "__main__":
         print("Using GPU ", device)
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device)
         assert torch.cuda.device_count() == 1
-        distributed = False 
+        distributed = False
 
     log_folder = args.log_folder
     if not log_folder:
@@ -207,11 +203,10 @@ if __name__ == "__main__":
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size
         config.data_config["val_bs"] = args.batch_size
-    
+
     if args.pretrained_weights:
-        config.pretrained_weights = args.pretrained_weights 
-    
-    
+        config.pretrained_weights = args.pretrained_weights
+
     if config.local_rank == 0:
         if args.fold > -1:
             config.selected_folds = [args.fold]
@@ -235,17 +230,17 @@ if __name__ == "__main__":
             print("\n -> Not Training again, check log_folder: ", log_folder)
         #print("\n Print config: ", config.__dict__)
     df = prepare_seg_data(data_path=DATA_PATH)
-#     df = df.sample(100000).reset_index(drop=True)
+    #     df = df.sample(100000).reset_index(drop=True)
 
     from training.main_seg import k_fold
-    
+
     if args.retrain:
         k_fold(config, df, log_folder=log_folder)
 
     if len(config.selected_folds) == 4:
         if config.local_rank == 0:
             print("\n -> Extracting features\n")
-        from inference.extract_features_new_2 import kfold_inference
+        from inference.extract_features_new_3 import kfold_inference
 
         df_patient, df_img = prepare_data(DATA_PATH)
         kfold_inference(
