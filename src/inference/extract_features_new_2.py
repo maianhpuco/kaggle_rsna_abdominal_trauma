@@ -121,7 +121,14 @@ def predict_distributed(
                 y_pred[:, 2:5] = y_pred[:, 2:5].softmax(-1)
                 y_pred[:, 5:8] = y_pred[:, 5:8].softmax(-1)
                 y_pred[:, 8:] = y_pred[:, 8:].softmax(-1)
+                
+            # Convert to CPU and NumPy before appending
+            y_pred_cpu = y_pred.detach().cpu().numpy()
+            ft_cpu = ft.detach().cpu().numpy()
 
+            preds_accumulator.append(y_pred_cpu)
+            fts_accumulator.append(ft_cpu) 
+            
             preds_accumulator.append(y_pred.detach())
             fts_accumulator.append(ft.detach())
             save_counter+=1
