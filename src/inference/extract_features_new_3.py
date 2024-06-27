@@ -148,7 +148,7 @@ def kfold_inference(
 
     if "fold" not in df_patient.columns:
         folds = pd.read_csv(config.folds_file)
-        df_patient = df_patient.merge(folds, how="left")
+        #df_patient = df_patient.merge(folds, how="left")
         df_img = df_img.merge(folds, how="left")
 
     for fold in config.selected_folds:
@@ -232,7 +232,7 @@ def kfold_inference(
             print_memory_usage()
 
 
-#---------- done with looping chunking
+# ---------- done with looping chunking
         len_dataset = df_val.shape[0]
 
         if config.local_rank == 0:
@@ -249,10 +249,16 @@ def kfold_inference(
                                      pred_cols].groupby("patient_id").mean())
 
             df_val_patient = df_val_patient.merge(
-                df_patient[df_patient["fold"] == fold],
+                df_patient[df_patient["patient_id"].isin(
+                    df_val_patient.index)],
                 on="patient_id",
                 how="left")
 
+            #            df_val_patient = df_val_patient.merge(
+            #                df_patient[df_patient["patient_id"] == fold],
+            #                on="patient_id",
+            #                how="left")
+            #
             print()
             for tgt in IMAGE_TARGETS:
                 auc = roc_auc_score(df_val_patient[tgt],
