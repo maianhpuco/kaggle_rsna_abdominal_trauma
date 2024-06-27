@@ -14,6 +14,30 @@ from util.metrics import rsna_loss
 from util.torch import load_model_weights, sync_across_gpus
 from params import IMAGE_TARGETS
 
+from torch.utils.data import DataLoader, Subset
+import numpy as np
+
+class ChunkedDataLoader:
+    def __init__(self, dataset, batch_size, chunk_size, num_workers=0):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.chunk_size = chunk_size
+        self.num_workers = num_workers
+
+    def __iter__(self):
+        dataset_size = len(self.dataset)
+        indices = np.arange(dataset_size)
+        np.random.shuffle(indices)  # Shuffle indices if needed
+
+        for start_idx in range(0, dataset_size, self.chunk_size):
+            end_idx = min(start_idx + self.chunk_size, dataset_size)
+            chunk_indices = indices[start_idx:end_idx]
+            chunk_subset = Subset(self.dataset, chunk_indices)
+            chunk_loader = DataLoader(chunk_subset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
+
+            for batch in chunk_loader:
+                yield batch 
+                
 def print_memory_usage():
     import psutil 
     # Get total system memory and current memory used
@@ -42,8 +66,8 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         
     preds_accumulator = []
     fts_accumulator = [] 
-    memory_used = print_memory_usage()
-    print(f"Saved predictions and features after {batches_processed} batches {memory_used}")
+    print(f"Saved predictions and features after {batches_processed} batches")
+    print_memory_usage() 
 
  
 class Config:
@@ -108,6 +132,8 @@ def predict_distributed(
     preds_accumulator, fts_accumulator = [], [] 
     save_counter = 0
     
+    
+ 
     with torch.no_grad():
         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
             with torch.cuda.amp.autocast(enabled=use_fp16):
@@ -133,13 +159,15 @@ def predict_distributed(
             # preds_accumulator.append(y_pred.detach())
             # fts_accumulator.append(ft.detach())
             save_counter+=1
-            
+         
             if save_counter % save_every == 0:
                 save_results(
                         preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold=fold
                     )
                 # Reset accumulators and counter
                 preds_accumulator, fts_accumulator = [], [] 
+            import torch
+            torch.cuda.empty_cache() 
     # Final save of remaining results
     
     if preds_accumulator:
@@ -147,7 +175,7 @@ def predict_distributed(
             preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold=fold
         ) 
         preds_accumulator, fts_accumulator = [], []  
-    
+        torch.cuda.empty_cache() 
      
                 
     # preds = torch.cat(preds, 0)
