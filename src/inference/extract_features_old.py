@@ -87,10 +87,10 @@ def predict_distributed(
 
             preds.append(y_pred.detach())
             fts.append(ft.detach())
-            del img, y_pred, ft 
+
     preds = torch.cat(preds, 0)
     fts = torch.cat(fts, 0)
-    
+
     if distributed:
         fts = sync_across_gpus(fts, world_size)
         preds = sync_across_gpus(preds, world_size)
@@ -197,7 +197,6 @@ def kfold_inference(
             world_size=config.world_size,
             local_rank=config.local_rank,
         )
-        
         if config.local_rank == 0:
             pred, fts = pred[: len(dataset)], fts[: len(dataset)]
 
@@ -228,107 +227,4 @@ def kfold_inference(
                 df_val_patient,
             )
             for k, v in losses.items():
-                print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}") 
-                
-# def predict_distributed(
-#     model,
-#     dataset,
-#     loss_config,
-#     batch_size=64,
-#     use_fp16=False,
-#     num_workers=8,
-#     distributed=True,
-#     world_size=0,
-#     local_rank=0,
-#     save_every=10,  # New argument for saving results periodically
-# ):
-#     """
-#     Make predictions using a PyTorch model on a given dataset.
-#     Uses DDP.
-
-#     Args:
-#         model (nn.Module): PyTorch model for making predictions.
-#         dataset (torch.utils.data.Dataset): Dataset used for prediction.
-#         loss_config (dict): Configuration for the loss function.
-#         batch_size (int, optional): Batch size for inference. Defaults to 64.
-#         use_fp16 (bool, optional): Whether to use mixed-precision (fp16) inference. Defaults to False.
-#         num_workers (int, optional): Number of workers for data loading. Defaults to 8.
-#         distributed (bool, optional): Whether to use distributed inference. Defaults to True.
-#         world_size (int, optional): Number of GPUs used in distributed inference. Defaults to 0.
-#         local_rank (int, optional): Local rank for distributed inference. Defaults to 0.
-#         save_every (int, optional): Frequency (in batches) to save results. Defaults to 100.
-
-#     Returns:
-#         None
-#     """
-#     model.eval()
-#     preds, fts = [], []
-
-#     loader = define_loaders(
-#         dataset,
-#         dataset,
-#         batch_size=batch_size,
-#         val_bs=batch_size,
-#         num_workers=num_workers,
-#         distributed=distributed,
-#         world_size=world_size,
-#         local_rank=local_rank,
-#     )[1]
-
-#     batches_processed = 0
-#     save_counter = 0
-#     preds_accumulator, fts_accumulator = [], []
-
-#     with torch.no_grad():
-#         for img, _, _ in tqdm(loader, disable=(local_rank != 0)):
-#             with torch.cuda.amp.autocast(enabled=use_fp16):
-#                 y_pred, ft = model(img.cuda(), return_fts=True)
-
-#             if loss_config["activation"] == "sigmoid":
-#                 y_pred = y_pred.sigmoid()
-#             elif loss_config["activation"] == "softmax":
-#                 y_pred = y_pred.softmax(-1)
-#             elif loss_config["activation"] == "patient":
-#                 y_pred[:, :2] = y_pred[:, :2].sigmoid()
-#                 y_pred[:, 2:5] = y_pred[:, 2:5].softmax(-1)
-#                 y_pred[:, 5:8] = y_pred[:, 5:8].softmax(-1)
-#                 y_pred[:, 8:] = y_pred[:, 8:].softmax(-1)
-
-#             preds_accumulator.append(y_pred.detach().cpu().numpy())
-#             fts_accumulator.append(ft.detach().cpu().numpy())
-#             save_counter += 1
-
-#             if save_counter >= save_every:
-#                 # Save accumulated results
-#                 save_results(preds_accumulator, fts_accumulator, batches_processed)
-#                 # Reset accumulators and counter
-#                 preds_accumulator, fts_accumulator = [], []
-#                 save_counter = 0
-
-#             batches_processed += 1
-
-#     # Final save of remaining results
-#     if preds_accumulator:
-#         save_results(preds_accumulator, fts_accumulator, batches_processed)
-
-#     torch.distributed.barrier() 
-    
-# def save_results(preds_accumulator, fts_accumulator, batches_processed):
-#     """
-#     Save accumulated predictions and features to numpy files.
-
-#     Args:
-#         preds_accumulator (list): List of accumulated prediction arrays.
-#         fts_accumulator (list): List of accumulated feature arrays.
-#         batches_processed (int): Total number of batches processed.
-#     """
-#     exp_folder = "your_experiment_folder_path_here/"
-
-#     preds_result = np.concatenate(preds_accumulator, axis=0)
-#     fts_result = np.concatenate(fts_accumulator, axis=0)
-
-#     # Save predictions and features
-#     np.save(exp_folder + f"pred_val.npy", preds_result)
-#     np.save(exp_folder + f"fts_val.npy", fts_result)
-
-#     print(f"Saved predictions and features after {batches_processed} batches.") 
+                print(f"- {k.split('_')[0][:8]} loss\t: {v:.3f}")
