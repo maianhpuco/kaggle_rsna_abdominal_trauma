@@ -228,9 +228,9 @@ def kfold_inference(
             else:
                 pred = np.concatenate((pred, pred_chunk), axis=0)
                 fts = np.concatenate((fts, fts_chunk), axis=0)
-                        print("+++++ After append", pred.shape)
-                        print_memory_usage()
-            
+            print("+++++ After append", pred.shape)
+            print_memory_usage()
+
 
 #---------- done with looping chunking
 
