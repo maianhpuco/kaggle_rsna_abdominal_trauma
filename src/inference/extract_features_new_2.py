@@ -64,7 +64,8 @@ def predict_distributed(
     distributed=True,
     world_size=0,
     local_rank=0,
-    exp_folder=None, 
+    exp_folder=None,
+    fold_name=None 
 ):
     """
     Make predictions using a PyTorch model on a given dataset.
@@ -127,7 +128,7 @@ def predict_distributed(
             
             if save_counter % save_every == 0:
                 save_results(
-                        preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold_name
+                        preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold
                     )
                 # Reset accumulators and counter
                 preds_accumulator, fts_accumulator = [], [] 
@@ -135,7 +136,7 @@ def predict_distributed(
     
     if preds_accumulator:
         save_results(
-            preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold_name
+            preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold
         ) 
         preds_accumulator, fts_accumulator = [], []  
     
@@ -258,6 +259,8 @@ def kfold_inference(
             distributed=True,
             world_size=config.world_size,
             local_rank=config.local_rank,
+            exp_folder=exp_folder, 
+            fold_name=fold
         )
         print("Done inference,!!!! Start loading the data")
         for preds_file in sorted(glob.glob(exp_folder + f"pred_val_batch_{fold}_*.npy")):
