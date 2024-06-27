@@ -102,7 +102,7 @@ def predict_distributed(
     )[1]
     # variable to save result 
     batches_processed = 0 
-    save_every = 1000
+    save_every = 200 
     preds_accumulator, fts_accumulator = [], [] 
     save_counter = 0
     
@@ -247,7 +247,7 @@ def kfold_inference(
             os.remove(f)
         for f in glob.glob(exp_folder + f"fts_val_batch_{fold}_*.npy"):
             os.remove(f)  
-
+        print("done remove old data, start runing prediction")
         predict_distributed(
             model,
             dataset,
