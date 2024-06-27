@@ -103,11 +103,11 @@ def predict_distributed(
     fts = torch.cat(fts, 0)
 
     print("a chunk output shape :", preds.shape)
-    if distributed:
-        fts = sync_across_gpus(fts, world_size)
-        preds = sync_across_gpus(preds, world_size)
-        torch.distributed.barrier()
-
+    #    if distributed:
+    #        fts = sync_across_gpus(fts, world_size)
+    #        preds = sync_across_gpus(preds, world_size)
+    #        torch.distributed.barrier()
+    #
     if local_rank == 0:
         preds = preds.cpu().numpy()
         fts = fts.cpu().numpy()
@@ -221,6 +221,7 @@ def kfold_inference(
                 world_size=config.world_size,
                 local_rank=config.local_rank,
             )
+
             if chunk_idx == 0:
                 pred = pred_chunk
                 fts = fts_chunk
