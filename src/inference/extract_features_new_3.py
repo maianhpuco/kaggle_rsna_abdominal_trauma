@@ -225,12 +225,12 @@ def kfold_inference(
             if chunk_idx == 0:
                 pred = pred_chunk
                 fts = fts_chunk
-            pred = torch.cat(pred_chunk, dim=0)
-            fts = torch.cat(fts_chunk, dim=0)
-
-            print("+++++ After append", pred.shape)
-            print_memory_usage()
-
+            else:
+                pred = np.concatenate((pred, pred_chunk), axis=0)
+                fts = np.concatenate((fts, fts_chunk), axis=0)
+                        print("+++++ After append", pred.shape)
+                        print_memory_usage()
+            
 
 #---------- done with looping chunking
 
