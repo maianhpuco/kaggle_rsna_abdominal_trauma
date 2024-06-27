@@ -259,11 +259,22 @@ def kfold_inference(
             #                on="patient_id",
             #                how="left")
             #
-            print()
+            print("------")
+            #            for tgt in IMAGE_TARGETS:
+            #                auc = roc_auc_score(df_val_patient[tgt],
+            #                                    df_val_patient[f"pred_{tgt}"])
+            #                print(f"- {tgt} auc : {auc:.3f}")
             for tgt in IMAGE_TARGETS:
-                auc = roc_auc_score(df_val_patient[tgt],
-                                    df_val_patient[f"pred_{tgt}"])
-                print(f"- {tgt} auc : {auc:.3f}")
+                y_true = df_val_patient[tgt]
+                y_pred = df_val_patient[f"pred_{tgt}"]
+
+                # Check if there are at least two unique classes
+                if len(np.unique(y_true)) > 1:
+                    auc = roc_auc_score(y_true, y_pred)
+                    print(f"- {tgt} auc : {auc:.3f}")
+                else:
+                    print(
+                        f"- {tgt} auc : Not defined (only one class present)")
 
             losses, avg_loss = rsna_loss(
                 df_val_patient[[
