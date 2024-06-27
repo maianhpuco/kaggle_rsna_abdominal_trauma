@@ -191,7 +191,7 @@ def kfold_inference(
             crop=config.crop,
         )
 
-        #define chunk to prevent OOM
+        # define chunk to prevent OOM
         chunk_size = 10000
         df_val_chunks = np.array_split(df_val,
                                        np.ceil(len(df_val) / chunk_size))
@@ -233,9 +233,10 @@ def kfold_inference(
 
 
 #---------- done with looping chunking
+        len_dataset = df_val.shape[0]
 
         if config.local_rank == 0:
-            pred, fts = pred[:len(dataset)], fts[:len(dataset)]
+            pred, fts = pred[:len_dataset], fts[:len_dataset]
 
         if save and config.local_rank == 0:
             np.save(exp_folder + f"pred_val_{fold}.npy", pred)
