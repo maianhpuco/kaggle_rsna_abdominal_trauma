@@ -20,7 +20,7 @@ def print_memory_usage():
     print(f"Total: {svmem.total / (1024 ** 3):.2f} GB", f"Used : {svmem.used / (1024 ** 3):.2f} GB")
  
 
-def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name):
+def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold):
     """
     Save accumulated predictions and features to numpy files with unique filenames.
 
@@ -29,12 +29,12 @@ def save_results(preds_accumulator, fts_accumulator, batches_processed, exp_fold
         fts_accumulator (list): List of accumulated feature arrays.
         batches_processed (int): Total number of batches processed.
         exp_folder (str): Path to the experiment folder.
-        fold_name (str): Name of the fold for saving the files.
+        fold (str): Name of the fold for saving the files.
     """
     for i, (preds, fts) in enumerate(zip(preds_accumulator, fts_accumulator)):
         # Generate unique filenames
-        preds_file = exp_folder + f"pred_val_batch_{fold_name}_{batches_processed}_{i}.npy"
-        fts_file = exp_folder + f"fts_val_batch_{fold_name}_{batches_processed}_{i}.npy"
+        preds_file = exp_folder + f"pred_val_batch_{fold}_{batches_processed}_{i}.npy"
+        fts_file = exp_folder + f"fts_val_batch_{fold}_{batches_processed}_{i}.npy"
         
         np.save(preds_file, preds)
         np.save(fts_file, fts)
@@ -65,7 +65,7 @@ def predict_distributed(
     world_size=0,
     local_rank=0,
     exp_folder=None,
-    fold_name=None 
+    fold=None 
 ):
     """
     Make predictions using a PyTorch model on a given dataset.
@@ -81,7 +81,7 @@ def predict_distributed(
         distributed (bool, optional): Whether to use distributed inference. Defaults to True.
         world_size (int, optional): Number of GPUs used in distributed inference. Defaults to 0.
         local_rank (int, optional): Local rank for distributed inference. Defaults to 0.
-
+1
     Returns:
         Tuple: If `local_rank` is 0, returns a tuple containing:
             - preds (numpy.ndarray): Predictions from the model.
@@ -128,7 +128,7 @@ def predict_distributed(
             
             if save_counter % save_every == 0:
                 save_results(
-                        preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold
+                        preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold=fold
                     )
                 # Reset accumulators and counter
                 preds_accumulator, fts_accumulator = [], [] 
@@ -136,7 +136,7 @@ def predict_distributed(
     
     if preds_accumulator:
         save_results(
-            preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold_name=fold
+            preds_accumulator, fts_accumulator, batches_processed, exp_folder, fold=fold
         ) 
         preds_accumulator, fts_accumulator = [], []  
     
@@ -260,7 +260,7 @@ def kfold_inference(
             world_size=config.world_size,
             local_rank=config.local_rank,
             exp_folder=exp_folder, 
-            fold_name=fold
+            fold=fold
         )
         print("Done inference,!!!! Start loading the data")
         for preds_file in sorted(glob.glob(exp_folder + f"pred_val_batch_{fold}_*.npy")):
