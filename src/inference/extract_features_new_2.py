@@ -166,7 +166,6 @@ def predict_distributed(
                     )
                 # Reset accumulators and counter
                 preds_accumulator, fts_accumulator = [], [] 
-            import torch
             torch.cuda.empty_cache() 
     # Final save of remaining results
     
