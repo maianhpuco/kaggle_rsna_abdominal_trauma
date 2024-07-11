@@ -35,6 +35,7 @@ def train(
     transfos = get_transfos(
         strength=config.aug_strength, resize=config.resize, crop=config.crop
     )
+    print("num frames: ", config.n_frames)
     train_dataset = AbdominalDataset(
         df_train,
         df_img_train,
