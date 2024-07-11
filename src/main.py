@@ -159,10 +159,10 @@ class Config:
 
 if __name__ == "__main__":
     warnings.simplefilter("ignore", UserWarning)
-    config.distributed = False
     config = Config
     # init_distributed(config)
 
+    config.distributed = False
     if config.local_rank == 0:
         print("\nStarting !")
     args = parse_args()
