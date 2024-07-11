@@ -123,7 +123,7 @@ class AbdominalDataset(Dataset):
         self.targets = df_patient[PATIENT_TARGETS].values
         self.max_frames = dict(
             df_img[["series", "frame"]].groupby("series").max()["frame"]
-        )
+        )?image
 
     def __len__(self):
         """
@@ -222,9 +222,11 @@ class AbdominalDataset(Dataset):
             # im = cv2.imread(paths[0], 0)
             # print(im.shape)
             # end debug
-
-            image = np.array([cv2.imread(path, 0) for path in paths]).transpose(1, 2, 0)
-
+            images = [cv2.resize(cv2.imread(path, 0), target_size) for path in paths]
+            image = np.array(images).transpose(1, 2, 0)
+ 
+            #image = np.array([cv2.imread(path, 0) for path in paths]).transpose(1, 2, 0)
+                
         else:
             frame = row.frame
             image = cv2.imread(row.path)
