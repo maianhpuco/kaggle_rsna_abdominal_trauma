@@ -229,6 +229,7 @@ if __name__ == "__main__":
 
     from training.main import k_fold
 
+    print("value of run:", run)
     k_fold(config, df_patient, df_img, log_folder=log_folder, run=run)
 
     if len(config.selected_folds) == 4:

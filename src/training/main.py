@@ -163,7 +163,7 @@ def k_fold(config, df, df_img, log_folder=None, run=None):
             if len(df) <= 1000:
                 df_train, df_val = df, df
                 df_img_train, df_img_val = df_img, df_img
-
+            print(">>>> code is updated ")
             preds, metrics = train(
                 config,
                 df_train,
