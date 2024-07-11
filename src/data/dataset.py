@@ -220,6 +220,7 @@ class AbdominalDataset(Dataset):
 
             images = [cv2.resize(cv2.imread(path, 0), target_size) for path in paths]
             image = np.array(images).transpose(1, 2, 0)
+
             # print("image_shape", image.shape)
             # image = np.array([cv2.imread(path, 0) for path in paths]).transpose(1, 2, 0)
 
