@@ -160,7 +160,7 @@ class Config:
 if __name__ == "__main__":
     warnings.simplefilter("ignore", UserWarning)
     config = Config
-    # init_distributed(config)
+    init_distributed(config)
 
     config.distributed = False
     if config.local_rank == 0:
