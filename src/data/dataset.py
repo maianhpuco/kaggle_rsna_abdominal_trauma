@@ -220,7 +220,7 @@ class AbdominalDataset(Dataset):
 
             images = [cv2.resize(cv2.imread(path, 0), target_size) for path in paths]
             image = np.array(images).transpose(1, 2, 0)
-            print("image_shape", image.shape)
+            # print("image_shape", image.shape)
             # image = np.array([cv2.imread(path, 0) for path in paths]).transpose(1, 2, 0)
 
         else:
@@ -232,13 +232,13 @@ class AbdominalDataset(Dataset):
         if self.transforms:
             transformed = self.transforms(image=image)
             image = transformed["image"]
-
+            print("after transform: ", image.shape)
         y_patient = torch.tensor(y_patient, dtype=torch.float)
         y_img = torch.tensor(row[self.classes], dtype=torch.float)
-
+        print("done 238")
         if y_img.size(-1) == 5:  # Patient level - TODO : y_patient ?
             y_img = to_one_hot_patient(y_img.unsqueeze(0))[0]
-
+        print("done 241")
         if self.n_frames > 1:
             if self.frames_chanel:
                 image = image.view(self.n_frames, 3, image.size(1), image.size(2))
@@ -251,7 +251,7 @@ class AbdominalDataset(Dataset):
         else:
             if not self.frames_chanel:
                 image = image.repeat(3, 1, 1)
-
+        print("done 254")
         return image, y_img, y_patient
 
 
