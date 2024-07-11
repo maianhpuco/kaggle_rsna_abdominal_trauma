@@ -36,6 +36,8 @@ def train(
         strength=config.aug_strength, resize=config.resize, crop=config.crop
     )
     print("num frames: ", config.n_frames)
+    print("frame channel", config.frames_chanel)
+
     train_dataset = AbdominalDataset(
         df_train,
         df_img_train,
