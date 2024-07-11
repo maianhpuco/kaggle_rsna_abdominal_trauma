@@ -127,8 +127,8 @@ class Config:
     }
 
     data_config = {
-        "batch_size": 32 if n_frames <= 1 else 8,
-        "val_bs": 32 if n_frames <= 1 else 16,
+        "batch_size": 8 if n_frames <= 1 else 4,  # 32 if n_frames <= 1 else 8,
+        "val_bs": 8 if n_frames <= 1 else 4,  # 32 if n_frames <= 1 else 16,
         "mix": "cutmix",
         "mix_proba": 0.5,
         "sched": False,
