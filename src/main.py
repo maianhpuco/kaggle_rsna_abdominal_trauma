@@ -96,7 +96,8 @@ class Config:
 
     # k-fold
     k = 4
-    folds_file = f"../input/folds_{k}.csv"
+    folds_file = os.path.join(DATA_PATH, f"folds_{k}.csv")
+    # folds_file = f"../input/folds_{k}.csv"
     selected_folds = [0, 1, 2, 3]
 
     # Model
