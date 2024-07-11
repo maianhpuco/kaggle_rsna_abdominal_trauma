@@ -7,8 +7,12 @@ import torch
 
 from data.preparation import prepare_data, prepare_seg_data
 from params import DATA_PATH
-from util.logger import (create_logger, get_last_log_folder,
-                         prepare_log_folder, save_config)
+from util.logger import (
+    create_logger,
+    get_last_log_folder,
+    prepare_log_folder,
+    save_config,
+)
 from util.torch import init_distributed
 
 
@@ -66,13 +70,15 @@ def parse_args():
         default=0.0,
         help="Weight decay",
     )
-    parser.add_argument("--pretrained_weights",
-                        type=str,
-                        default="",
-                        help="path to the pretrained model")
-    parser.add_argument("--retrain",
-                        action='store_true',
-                        help="Whether to retrain the model")
+    parser.add_argument(
+        "--pretrained_weights",
+        type=str,
+        default="",
+        help="path to the pretrained model",
+    )
+    parser.add_argument(
+        "--retrain", action="store_true", help="Whether to retrain the model"
+    )
     return parser.parse_args()
 
 
@@ -228,7 +234,7 @@ if __name__ == "__main__":
             print("\n -> Training\n")
         else:
             print("\n -> Not Training again, check log_folder: ", log_folder)
-        #print("\n Print config: ", config.__dict__)
+        # print("\n Print config: ", config.__dict__)
     df = prepare_seg_data(data_path=DATA_PATH)
     #     df = df.sample(100000).reset_index(drop=True)
 

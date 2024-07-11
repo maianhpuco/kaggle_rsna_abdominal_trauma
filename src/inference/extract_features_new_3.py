@@ -21,8 +21,10 @@ def print_memory_usage():
 
     # Get total system memory and current memory used
     svmem = psutil.virtual_memory()
-    print(f"Total: {svmem.total / (1024 ** 3):.2f} GB",
-          f"Used : {svmem.used / (1024 ** 3):.2f} GB")
+    print(
+        f"Total: {svmem.total / (1024 ** 3):.2f} GB",
+        f"Used : {svmem.used / (1024 ** 3):.2f} GB",
+    )
 
 
 class Config:
@@ -148,7 +150,7 @@ def kfold_inference(
 
     if "fold" not in df_patient.columns:
         folds = pd.read_csv(config.folds_file)
-        #df_patient = df_patient.merge(folds, how="left")
+        # df_patient = df_patient.merge(folds, how="left")
         df_img = df_img.merge(folds, how="left")
 
     for fold in config.selected_folds:
@@ -164,16 +166,15 @@ def kfold_inference(
             num_classes_aux=config.num_classes_aux,
             n_channels=config.n_channels,
             reduce_stride=config.reduce_stride,
-            increase_stride=config.increase_stride if hasattr(
-                config, "increase_stride") else False,
+            increase_stride=config.increase_stride
+            if hasattr(config, "increase_stride")
+            else False,
             pretrained=False,
         )
         model = model.cuda().eval()
 
         weights = exp_folder + f"{config.name}_{fold}.pt"
-        model = load_model_weights(model,
-                                   weights,
-                                   verbose=config.local_rank == 0)
+        model = load_model_weights(model, weights, verbose=config.local_rank == 0)
 
         if distributed:
             model = DistributedDataParallel(
@@ -193,8 +194,7 @@ def kfold_inference(
 
         # define chunk to prevent OOM
         chunk_size = 10000
-        df_val_chunks = np.array_split(df_val,
-                                       np.ceil(len(df_val) / chunk_size))
+        df_val_chunks = np.array_split(df_val, np.ceil(len(df_val) / chunk_size))
 
         for chunk_idx, df_val_chunk in enumerate(df_val_chunks):
             print(f"------> processing chunk number :{chunk_idx}, \
@@ -203,8 +203,9 @@ def kfold_inference(
             dataset = AbdominalInfDataset(
                 df_val_chunk,
                 transforms=transforms,
-                frames_chanel=config.frames_chanel if hasattr(
-                    config, "frames_chanel") else 0,
+                frames_chanel=config.frames_chanel
+                if hasattr(config, "frames_chanel")
+                else 0,
                 n_frames=config.n_frames if hasattr(config, "n_frames") else 1,
                 stride=config.stride if hasattr(config, "stride") else 1,
             )
@@ -214,7 +215,8 @@ def kfold_inference(
                 dataset,
                 config.loss_config,
                 batch_size=config.data_config["val_bs"]
-                if batch_size is None else batch_size,
+                if batch_size is None
+                else batch_size,
                 use_fp16=use_fp16,
                 num_workers=num_workers,
                 distributed=True,
@@ -231,8 +233,7 @@ def kfold_inference(
             print("+++++ After append", pred.shape)
             print_memory_usage()
 
-
-# ---------- done with looping chunking
+        # ---------- done with looping chunking
         len_dataset = df_val.shape[0]
 
         if config.local_rank == 0:
@@ -243,16 +244,17 @@ def kfold_inference(
 
             pred_cols = []
             for i, tgt in enumerate(IMAGE_TARGETS):
-                df_val[f"pred_{tgt}"] = pred[:len(df_val), i]
+                df_val[f"pred_{tgt}"] = pred[: len(df_val), i]
                 pred_cols.append(f"pred_{tgt}")
-            df_val_patient = (df_val[["patient_id"] +
-                                     pred_cols].groupby("patient_id").mean())
+            df_val_patient = (
+                df_val[["patient_id"] + pred_cols].groupby("patient_id").mean()
+            )
 
             df_val_patient = df_val_patient.merge(
-                df_patient[df_patient["patient_id"].isin(
-                    df_val_patient.index)],
+                df_patient[df_patient["patient_id"].isin(df_val_patient.index)],
                 on="patient_id",
-                how="left")
+                how="left",
+            )
 
             #            df_val_patient = df_val_patient.merge(
             #                df_patient[df_patient["patient_id"] == fold],
@@ -273,13 +275,12 @@ def kfold_inference(
                     auc = roc_auc_score(y_true, y_pred)
                     print(f"- {tgt} auc : {auc:.3f}")
                 else:
-                    print(
-                        f"- {tgt} auc : Not defined (only one class present)")
+                    print(f"- {tgt} auc : Not defined (only one class present)")
 
             losses, avg_loss = rsna_loss(
-                df_val_patient[[
-                    "pred_bowel_injury", "pred_extravasation_injury"
-                ]].values,
+                df_val_patient[
+                    ["pred_bowel_injury", "pred_extravasation_injury"]
+                ].values,
                 df_val_patient,
             )
             for k, v in losses.items():

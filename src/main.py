@@ -246,7 +246,7 @@ if __name__ == "__main__":
             log_folder,
             use_fp16=config.use_fp16,
             save=True,
-            distributed=True,
+            distributed=False,
             config=config,
         )
 
