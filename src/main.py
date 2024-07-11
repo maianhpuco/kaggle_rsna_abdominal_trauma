@@ -205,7 +205,7 @@ if __name__ == "__main__":
 
     run = None
     if config.local_rank == 0:
-        run = init_neptune(config, log_folder)
+        # run = init_neptune(config, log_folder)
 
         if args.fold > -1:
             config.selected_folds = [args.fold]
