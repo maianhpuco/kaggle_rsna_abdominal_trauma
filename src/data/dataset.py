@@ -222,6 +222,7 @@ class AbdominalDataset(Dataset):
             # im = cv2.imread(paths[0], 0)
             # print(im.shape)
             # end debug
+            target_size = (512, 512) 
             images = [cv2.resize(cv2.imread(path, 0), target_size) for path in paths]
             image = np.array(images).transpose(1, 2, 0)
  
