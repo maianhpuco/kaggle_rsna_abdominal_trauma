@@ -217,7 +217,7 @@ class AbdominalDataset(Dataset):
             prefix = row.path.rsplit("_", 1)[0]
             paths = [prefix + f"_{f:04d}.png" for f in frames]
             # debug
-            print(len(paths))
+            print("len path: ", len(paths))
             print("example_path: ", paths[0])
             im = cv2.imread(paths[0], 0)
             print(im.shape)
